@@ -1,0 +1,36 @@
+openapi: "3.0.2"
+info:
+  license:
+    name: Private
+  title: HTTP API
+  version: "0.0.1"
+servers:
+  - url: http://localhost:8080
+    description: "local development"
+
+paths:
+  /user/{id}:
+    get:
+      summary: "Get user by ID"
+      description: "Returns a JSON object containing the user's email and name"
+      parameters:
+        - in: path
+          name: id
+          description: "The user's ID"
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Successful response"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                    description: "The user's email address"
+                  name:
+                    type: string
+                    description: "The user's name"

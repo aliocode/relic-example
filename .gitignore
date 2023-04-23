@@ -1,0 +1,14 @@
+# Go specific
+*.exe
+*.test
+*.prof
+*.out
+*.test.out
+*.testmain.go
+
+# GoLand specific
+.idea/
+
+# Envs
+.env
+
