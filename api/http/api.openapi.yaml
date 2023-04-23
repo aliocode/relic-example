@@ -2,35 +2,56 @@ openapi: "3.0.2"
 info:
   license:
     name: Private
-  title: HTTP API
+  title: User API
   version: "0.0.1"
 servers:
   - url: http://localhost:8080
     description: "local development"
-
 paths:
-  /user/{id}:
+  /users/{email}:
     get:
-      summary: "Get user by ID"
-      description: "Returns a JSON object containing the user's email and name"
+      summary: Get a user by email
       parameters:
-        - in: path
-          name: id
-          description: "The user's ID"
+        - name: email
+          in: path
+          description: The email address of the user to retrieve
           required: true
           schema:
-            type: integer
+            type: string
       responses:
-        "200":
-          description: "Successful response"
+        '200':
+          description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  email:
+                  id:
                     type: string
-                    description: "The user's email address"
                   name:
                     type: string
-                    description: "The user's name"
+                  email:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+  /users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+      responses:
+        '201':
+          description: Created

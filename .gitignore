@@ -9,6 +9,5 @@
 # GoLand specific
 .idea/
 
-# Envs
-.env
-
+# Local files and tests
+local/

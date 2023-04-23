@@ -6,6 +6,9 @@ import (
 
 	"github.com/aliocode/relic-example/internal/api/httphandler"
 	"github.com/aliocode/relic-example/internal/api/httpserver"
+	"github.com/aliocode/relic-example/internal/domain/user/postgres/sqlgen"
+	"github.com/aliocode/relic-example/internal/domain/user/service"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"go.uber.org/zap"
 )
@@ -17,8 +20,9 @@ type Container struct {
 	cfg    Config
 	once   once
 
-	relic      *newrelic.Application
-	httpserver http.Handler
+	relic       *newrelic.Application
+	httpserver  http.Handler
+	userService *service.Service
 }
 
 type once struct{}
@@ -37,6 +41,15 @@ func New() (*Container, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = cancel
 
+	userPool, err := pgxpool.Connect(ctx, cfg.UserPsqlDSN)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	userDB := sqlgen.NewRepo(userPool)
+	userService := service.NewService(userDB)
+
 	relic, err := newrelic.NewApplication(
 		newrelic.ConfigAppName(cfg.RelicAppName),
 		newrelic.ConfigLicense(cfg.RelicLicense),
@@ -46,16 +59,17 @@ func New() (*Container, error) {
 		return nil, err
 	}
 
-	server := httpserver.New(httphandler.New(), relic)
+	server := httpserver.New(httphandler.New(userService), relic)
 
 	return &Container{
-		ctx:        ctx,
-		cancel:     cancel,
-		log:        log,
-		cfg:        cfg,
-		once:       once{},
-		relic:      relic,
-		httpserver: server,
+		ctx:         ctx,
+		cancel:      cancel,
+		log:         log,
+		cfg:         cfg,
+		once:        once{},
+		relic:       relic,
+		httpserver:  server,
+		userService: userService,
 	}, nil
 }
 

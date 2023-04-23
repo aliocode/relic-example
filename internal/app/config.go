@@ -15,6 +15,7 @@ type Config struct {
 	RelicLicense string `env:"RELIC_LICENSE" envDefault:""`
 	LogLevel     string `env:"LOG_LEVEL" envDefault:"debug"`
 	HttpPort     string `env:"HTTP_PORT" envDefault:"8080"`
+	UserPsqlDSN  string `env:"USER_PSQL_DSN" envDefault:""`
 }
 
 func NewConfig() (Config, error) {

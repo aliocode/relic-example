@@ -18,11 +18,23 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// PostUsersJSONBody defines parameters for PostUsers.
+type PostUsersJSONBody struct {
+	Email *string `json:"email,omitempty"`
+	Name  *string `json:"name,omitempty"`
+}
+
+// PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
+type PostUsersJSONRequestBody PostUsersJSONBody
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Get user by ID
-	// (GET /user/{id})
-	GetUserId(w http.ResponseWriter, r *http.Request, id int)
+	// Create a new user
+	// (POST /users)
+	PostUsers(w http.ResponseWriter, r *http.Request)
+	// Get a user by email
+	// (GET /users/{email})
+	GetUsersEmail(w http.ResponseWriter, r *http.Request, email string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -34,23 +46,38 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// GetUserId operation middleware
-func (siw *ServerInterfaceWrapper) GetUserId(w http.ResponseWriter, r *http.Request) {
+// PostUsers operation middleware
+func (siw *ServerInterfaceWrapper) PostUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostUsers(w, r)
+	})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GetUsersEmail operation middleware
+func (siw *ServerInterfaceWrapper) GetUsersEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
 
-	// ------------- Path parameter "id" -------------
-	var id int
+	// ------------- Path parameter "email" -------------
+	var email string
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &id)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "email", runtime.ParamLocationPath, chi.URLParam(r, "email"), &email)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "email", Err: err})
 		return
 	}
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUserId(w, r, id)
+		siw.Handler.GetUsersEmail(w, r, email)
 	})
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -174,7 +201,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/user/{id}", wrapper.GetUserId)
+		r.Post(options.BaseURL+"/users", wrapper.PostUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/{email}", wrapper.GetUsersEmail)
 	})
 
 	return r
@@ -183,13 +213,14 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/3yRT4/UMAzFv0rkC5dqWpbLKjckJBgOMGKHE9pDNvVOs0qTYLsjjap8d+SU4c8u4pTW",
-	"sn9+73kFn+eSEyZhsGvtIKTHDHaFGDwmRv1MbkawcKBwdoJQO5AgUUsfjseDeXvYQwdnJA45gYVhN+xe",
-	"a1cumFwJYOHNbtjdQAfFyaR7oF8YqV/DWPXvhKLPiOwpFNkwX1AWSmyc+Xj3+ZPJD0/oxficxIUU0snI",
-	"hEYxr9jg7EI0Lo2maW2rySloP4KF9yhfGWk/NgnkZhQkBvvt+c7jb+T+HWgYYJto6K4pBIUQfl8C4QhW",
-	"aMEO2E84O/Ugl9K6kuAJCWq9124uOTE25zfDoI/6wNRsu1Ji8E1t/8SqY/0DWEi9SNimm9GXWR1fRDGO",
-	"hMzQXQWxUEgnvcrm4z+EnxE+G6y/KtsloGrpb8jd4j0yPy7RXD23QV7m2dFlu0RbYx4umnBjMNL53+eI",
-	"2btoRjxjzGXWuDpYKIKFSaTYvm8NU2axt8PtAPW+/ggAAP//jdA5c9ECAAA=",
+	"H4sIAAAAAAAC/6SST2/UTAzGv8rI57y7ad9LNTdAqKo40AM9oQpNM95mqswfbCdoFeW7I88Agt3lUHGK",
+	"5dh+7N8zKww5lpwwCYNdtw5COmSwK0xhwMSoYXIRwcI9hcUJwtaBBJk09cBI5s39HXSwIHHICSz0u353",
+	"pVW5YHIlgIX/d/3uGjooTkbVgf3MSDUqmUW/uSA5CTndedXKLA+1pAPCrzOyvM3+qIVDToKp9rhSpjDU",
+	"rv0Lq/gKPIwYXZ1MOlMCVh2MLkwayLHo6iwU0rOu2c47+6Fntkx+esFBYNOULhMIPVihGWuCS07cRK77",
+	"K/145IFCkcbjHaET9HUizzE6Ov7KGmcSfjNKo/5vXPZr3XbTWc94Ac8tNjrv61HKlVxEqUg/n+p/GtHU",
+	"ecZ5T8hs8sHIiFXVSDaEQgEXBHUfbHUJfnL5Ae708u430KfgHs+o9P9g3NDwfXG185ApagTeCf4nIerW",
+	"Z5b+3ezgX/MGOpiLf6X65XfzpyUfP5y8hlsU45ohT8fmVutjpOWyrVMe3GQ8LjjlEhVsBzNNYGEUKXa/",
+	"rwVjZrE3/U0P2+P2PQAA//+t+57W7gMAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

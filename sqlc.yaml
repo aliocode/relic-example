@@ -1,0 +1,10 @@
+version: "2"
+sql:
+- schema: "./internal/domain/user/postgres/migration"
+  queries: "./internal/domain/user/postgres/query"
+  engine: "postgresql"
+  gen:
+    go:
+      package: "sqlgen"
+      out: "internal/domain/user/postgres/sqlgen"
+      sql_package: "pgx/v4"
